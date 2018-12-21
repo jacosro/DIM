@@ -1,14 +1,16 @@
-﻿namespace Rosana
+﻿using System.Speech.Recognition;
+
+namespace Rosana
 {
     internal class CommandResult
     {
         public bool Success { get; }
-        public string Command { get; }
+        public RecognitionResult Result { get; }
 
-        public CommandResult(bool success, string command)
+        public CommandResult(bool success, RecognitionResult result)
         {
             this.Success = success;
-            this.Command = command;
+            this.Result = result;
         }
     }
 }

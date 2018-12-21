@@ -2,6 +2,7 @@
 using System.Speech.Recognition;
 using System.Speech.Synthesis;
 using System.Globalization;
+using System.Collections.Generic;
 
 namespace Rosana
 {
@@ -15,44 +16,78 @@ namespace Rosana
 
         static void Main(string[] args)
         {
-            /*
-            synth.Speak("Hola");
-            synth.Speak("Soy tu asistente virtual");
-            synth.Speak("Me llamo Rosana");
-            synth.Speak("Puedes captar mi atención diciendo mi nombre");
-            synth.Speak("Después dime algo que pueda entender y lo haré");
-            */
             Setup();
+            Listen();
         }
 
         private static void Setup()
         {
-            // Activation grammar ("Rosana")
-            // activationRecognizer.UnloadAllGrammars();
-
 
             activationRecognizer.SetInputToDefaultAudioDevice();
-            // activationRecognizer.SpeechRecognized += new EventHandler<SpeechRecognizedEventArgs>(OnSpeechRecognized);
-            // activationRecognizer.SpeechRecognitionRejected += new EventHandler<SpeechRecognitionRejectedEventArgs>((sender, e) => synth.Speak("No he oído nada"));
-            // activationRecognizer.BabbleTimeout = TimeSpan.FromSeconds(2);
-
+            activationRecognizer.UpdateRecognizerSetting("CFGConfidenceRejectionThreshold", 70);
             activationRecognizer.LoadGrammar(LoadActivationGrammar());
 
-            activationRecognizer.BabbleTimeout = TimeSpan.FromSeconds(5);
-            activationRecognizer.InitialSilenceTimeout = TimeSpan.FromSeconds(1);
-            activationRecognizer.EndSilenceTimeout = TimeSpan.FromSeconds(1);
+        }
 
-            // Console.WriteLine("Reconociendo");
-            // activationRecognizer.RecognizeAsync(RecognizeMode.Multiple);
-
-            
-            while (run) {
-                Console.WriteLine("Reconociendo");
-                RecognitionResult result = activationRecognizer.Recognize(); // TimeSpan.FromSeconds(1.5));
+        private static void Listen() { 
+            while (run)
+            {
+                RecognitionResult result = activationRecognizer.Recognize();
 
                 if (result != null)
                 {
-                    Console.WriteLine("Recognized: " + result.Text);
+                    Console.WriteLine("Reconocido: " + result.Text);
+
+                    synth.Speak("Te escucho");
+
+                    RosanaCommand command = new RosanaCommand();
+
+                    CommandResult commandResult = command.Listen();
+
+                    if (commandResult.Success)
+                    {
+                        Console.WriteLine("Reconocido: " + commandResult.Result.Text);
+
+                        synth.Speak("En seguida");
+
+                        SemanticValue semantics = commandResult.Result.Semantics;
+
+                        if (!semantics.ContainsKey("frase"))
+                        {
+                            Console.WriteLine("Error: no se ha reconocido ninguna frase"); // Should not happen in any case
+                        }
+                        else
+                        {
+                            SemanticValue frase = semantics["frase"];
+
+                            string comando = (string) frase.Value;
+
+                            if (RosanaCommand.ABRIR.Equals(comando))
+                            {
+                                System.Diagnostics.Process process = new System.Diagnostics.Process();
+                                System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
+                                startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                                startInfo.FileName = "cmd.exe";
+                                startInfo.Arguments = "/C " + (string) frase[RosanaCommand.ABRIR].Value;
+                                process.StartInfo = startInfo;
+                                process.Start();
+                            } else if (RosanaCommand.CHISTE.Equals(comando))
+                            {
+                                synth.Speak("Van dos y se cae el de en medio");
+                            } else if (RosanaCommand.CURIOSIDAD.Equals(comando))
+                            {
+                                synth.Speak("¿Sabías que los cocodrilos no pueden sacar la lengua?");
+                            } else if (RosanaCommand.DESCANSAR.Equals(comando))
+                            {
+                                synth.Speak("Adiós");
+                                run = false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        synth.Speak("No te he entendido");
+                    }
                 }
             }
         }
@@ -60,47 +95,9 @@ namespace Rosana
         private static Grammar LoadActivationGrammar()
         {
             GrammarBuilder grammarBuilder = new GrammarBuilder("Rosana");
-            // grammarBuilder.Culture = cultureInfo;
             Grammar grammar = new Grammar(grammarBuilder);
             grammar.Name = "Rosana";
             return grammar;
         }
-
-        private static void OnSpeechRecognized(object sender, SpeechRecognizedEventArgs speechRecognizedEvent)
-        {
-            activationRecognizer.RecognizeAsyncCancel();
-
-            synth.Speak("Te escucho");
-
-            RosanaCommand command = new RosanaCommand();
-
-            // If Async
-            /*
-            command.Callback = new EventHandler<CommandResult>((_sender, result) =>
-            {
-                if (result.Success)
-                {
-                    synth.Speak(result.Text);
-                } else
-                {
-                    synth.Speak("Lo siento, no te he entendido");
-                }
-            });
-            */
-
-            CommandResult result = command.Listen();
-
-            if (result.Success)
-            {
-                synth.Speak("En seguida");
-                // Execute command
-                // result.Command....
-            } else
-            {
-                synth.Speak("No te he entendido");
-            }
-        }
-
-
     }
 }

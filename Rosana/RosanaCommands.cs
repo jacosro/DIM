@@ -9,6 +9,12 @@ namespace Rosana
 {
     class RosanaCommand
     {
+        public static string ABRIR = "abrir";
+        public static string CHISTE = "chiste";
+        public static string CURIOSIDAD = "curiosidad";
+        public static string DESCANSAR = "descansar";
+
+
         private SpeechRecognitionEngine recognizer;
         public EventHandler<CommandResult> Callback { get; set; }
 
@@ -19,24 +25,11 @@ namespace Rosana
             recognizer.UnloadAllGrammars();
             recognizer.LoadGrammar(LoadGrammar());
             recognizer.SetInputToDefaultAudioDevice();
-
-            // If async
-            /*
-            recognizer.RecognizeCompleted += new EventHandler<RecognizeCompletedEventArgs>((_sender, _event) =>
-            {
-                this.Callback.Invoke(this, new CommandResult(true, _event.Result.Text));
-            });
-
-            recognizer.SpeechRecognitionRejected += new EventHandler<SpeechRecognitionRejectedEventArgs>((_sender, _event) =>
-            {
-                this.Callback.Invoke(this, new CommandResult(false, null));
-            });
-            */
+            recognizer.UpdateRecognizerSetting("CFGConfidenceRejectionThreshold", 60);
         }
 
         public CommandResult Listen()
         {
-            // Sync
             RecognitionResult result = recognizer.Recognize();
 
             CommandResult commandResult;
@@ -47,29 +40,70 @@ namespace Rosana
             } else
             {
                 // Extract command
-                commandResult = new CommandResult(true, result.Text);
+                commandResult = new CommandResult(true, result);
             }
 
             return commandResult;
         }
 
-        public void ListenAsync()
-        {
-            // If Async
-            recognizer.RecognizeAsync(RecognizeMode.Single);
-        }
-
         private Grammar LoadGrammar()
         {
-            Choices programChoice = new Choices();
+            GrammarBuilder frasesGrammarBuilder = new GrammarBuilder();
+            Choices frasesChoice = new Choices();
 
+            // Abrir programa
 
-            SemanticResultValue choiceResultValue = new SemanticResultValue("Explorador de archivos", "explorer.exe");
-            GrammarBuilder resultValueBuilder = new GrammarBuilder(choiceResultValue);
+            Choices abrirChoices = new Choices();
 
-            programChoice.Add(resultValueBuilder);
+            GrammarBuilder abrirGrammarBuilder = new GrammarBuilder("Abre el");
 
-            return null;
+            SemanticResultValue explorerSemanticValue = new SemanticResultValue("explorador de archivos", "start explorer.exe");
+            GrammarBuilder explorerBuilder = new GrammarBuilder(explorerSemanticValue);
+
+            SemanticResultValue notepadSemanticValue = new SemanticResultValue("bloc de notas", "start notepad.exe");
+            GrammarBuilder notepadBuilder = new GrammarBuilder(notepadSemanticValue);
+
+            SemanticResultValue chromeSemanticValue = new SemanticResultValue("navegador", "start https://www.upv.es");
+            GrammarBuilder chromeBuilder = new GrammarBuilder(chromeSemanticValue);
+
+            abrirChoices.Add(explorerBuilder, notepadBuilder, chromeBuilder);
+
+            SemanticResultKey semanticResultKey = new SemanticResultKey(ABRIR, abrirChoices);
+
+            abrirGrammarBuilder.Append(semanticResultKey);
+
+            // ---
+
+            // Cuéntame un chiste
+
+            GrammarBuilder chisteGrammarBuilder = new GrammarBuilder("Cuéntame un chiste");
+
+            // ---
+
+            // Curiosidad
+
+            GrammarBuilder curiosidadGrammarBuilder = new GrammarBuilder("Dime un dato curioso");
+
+            // ---
+
+            // Descansa
+
+            GrammarBuilder descansaGrammarBuilder = new GrammarBuilder("Descansa");
+
+            // ---
+
+            SemanticResultValue abrirResultValue = new SemanticResultValue(abrirGrammarBuilder, ABRIR);
+            SemanticResultValue chisteResultValue = new SemanticResultValue(chisteGrammarBuilder, CHISTE);
+            SemanticResultValue curiosidadResultValue = new SemanticResultValue(curiosidadGrammarBuilder, CURIOSIDAD);
+            SemanticResultValue descansaResultValue = new SemanticResultValue(descansaGrammarBuilder, DESCANSAR);
+
+            frasesChoice.Add(abrirResultValue, chisteResultValue, curiosidadResultValue, descansaResultValue);
+
+            SemanticResultKey frasesResultKey = new SemanticResultKey("frase", frasesChoice);
+
+            frasesGrammarBuilder.Append(frasesResultKey);
+
+            return new Grammar(frasesGrammarBuilder);
         }
 
     }
